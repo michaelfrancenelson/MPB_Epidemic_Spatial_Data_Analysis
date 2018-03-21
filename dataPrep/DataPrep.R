@@ -119,8 +119,10 @@ names(treeKill_MpbSurvival_US) = c("CellID",
 save(treeKill_MpbSurvival_US, file = paste0(dataSaveDir, "treeKill_MpbSurvival_US.Rd"))
 
 # Extract just the study site data points:
-treeKill_MpbSurvival_StudySites = treeKill_MpbSurvival_US[!is.na(over(treeKill_MpbSurvival_US, as(studySites, "SpatialPolygons")))]
-
-forestIndices = over(ponderosa_SPDF_StudySites,as(studySites,"SpatialPolygons"))
-treeKill_MpbSurvival = cbind(treeKill_MpbSurvival_StudySites, studySites[forestIndices, 3:4])
+treeKill_MpbSurvival_StudySites = 
+  treeKill_MpbSurvival_US[
+    !is.na(over(treeKill_MpbSurvival_US, as(studySites, "SpatialPolygons"))), ]
+over(treeKill_MpbSurvival_StudySites, as(studySites, "SpatialPolygons"))
+forestIndices = over(treeKill_MpbSurvival_StudySites, as(studySites, "SpatialPolygons"))
+treeKill_MpbSurvival_StudySites = cbind(treeKill_MpbSurvival_StudySites, studySites[forestIndices, 3:4])
 save(treeKill_MpbSurvival_StudySites, file = paste0(dataSaveDir, "treeKill_MpbSurvival_StudySites.Rd"))
