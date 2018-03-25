@@ -118,11 +118,61 @@ names(treeKill_MpbSurvival_US) = c("CellID",
               paste0("Mpb_survival_winter_ending_", MpbSurvivalYears))
 save(treeKill_MpbSurvival_US, file = paste0(dataSaveDir, "treeKill_MpbSurvival_US.Rd"))
 
-# Extract just the study site data points:
+
+
+# Extract data for study sites and set up colors/plotting names --------------------------------------------
+
+proj = proj4string(treeKill_MpbSurvival_US)
+studySites = spTransform(readOGR(studySiteDir, "mpb_study_sites"), proj)
+
 treeKill_MpbSurvival_StudySites = 
   treeKill_MpbSurvival_US[
     !is.na(over(treeKill_MpbSurvival_US, as(studySites, "SpatialPolygons"))), ]
-over(treeKill_MpbSurvival_StudySites, as(studySites, "SpatialPolygons"))
 forestIndices = over(treeKill_MpbSurvival_StudySites, as(studySites, "SpatialPolygons"))
 treeKill_MpbSurvival_StudySites = cbind(treeKill_MpbSurvival_StudySites, studySites[forestIndices, 3:4])
+
+forcodes = levels(treeKill_MpbSurvival_StudySites$FORCODE)
+fornames = treeKill_MpbSurvival_StudySites$FOREST[match(forcodes, treeKill_MpbSurvival_StudySites$FORCODE)]
+colMap = data.frame(forcode = forcodes, col = 1:6, forname = fornames)
+
+# Combine araphao, white river, and medicine bow into the same study site:
+oldCodes = list(forcodes[1], forcodes[2:4], forcodes[5], forcodes[6])
+newNames = as.character(c("Black Hills", "Colorado", "Colville", "Beaverhead"))
+newCodes = 1:4
+colMap2 = data.frame(forcode = newCodes, forname = newNames, col = 1:4)
+
+StudySiteCode = vector(mode = "numeric", length = nrow(treeKill_MpbSurvival_StudySites))
+StudySiteNames = vector(mode = "character", length = length(StudySiteCode))
+
+for(i in 1:4){
+  StudySiteCode[treeKill_MpbSurvival_StudySites$FORCODE %in% oldCodes[[i]] ] = colMap2$forcode[i]
+  StudySiteNames[StudySiteCode == colMap2$forcode[i]] = as.character(colMap2$forname[i])}
+StudySiteNames[match(colMap2$forcode, StudySiteCode)]
+treeKill_MpbSurvival_StudySites@data = data.frame(treeKill_MpbSurvival_StudySites, StudySiteCode = StudySiteCode, StudySiteName = StudySiteNames)
+
+save(colMap, colMap2, file = paste0(dataSaveDir, "colMaps.Rd"))
 save(treeKill_MpbSurvival_StudySites, file = paste0(dataSaveDir, "treeKill_MpbSurvival_StudySites.Rd"))
+
+
+# Setup Study Sites vector data -------------------------------------------------------
+proj = proj4string(treeKill_MpbSurvival_US)
+studySites = spTransform(readOGR(studySiteDir, "mpb_study_sites"), proj)
+
+StudySiteCode = vector(mode = "numeric", length = nrow(studySites))
+StudySiteNames = vector(mode = "character", length = length(StudySiteCode))
+for(i in 1:4){
+  StudySiteCode[studySites$FORCODE %in% oldCodes[[i]] ] = colMap2$forcode[i]
+  StudySiteNames[StudySiteCode == colMap2$forcode[i]] = as.character(colMap2$forname[i])}
+StudySiteNames[match(colMap2$forcode, StudySiteCode)]
+studySites@data = data.frame(studySites@data[, c("FOREST", "FORCODE")], StudySiteName = StudySiteNames, StudySiteCode = StudySiteCode)
+head(studySites@data)
+save(studySites, file = paste0(dataSaveDir, file = "studySites.Rd"))
+
+
+# Setup US States vector data ---------------------------------------------
+
+states = spTransform(readOGR(statesDir, "tl_2017_us_state"), proj)
+head(states@data)
+states@data = states@data[, c("STUSPS", 'NAME')]
+save(states, file = paste0(dataSaveDir, "States.Rd"))
+
