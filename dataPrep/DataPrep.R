@@ -1,16 +1,18 @@
 # https://daymet.ornl.gov/
 
-
 # Set up data paths -------------------------------------------------------
 {
   require(data.table)
   require(rgdal)
   require(sp)
+  require(nabor)
   source("dataPrep/daymet_class.R")
   lonLatProj = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
   dataSaveDir = "E:/Data/MPB_Overwinter_Data/"
   daymetFilesDir = "E:/Data/Daymet/daymet_output/"
   DatabasinDataPath = "E:/Data/Databasin/"
+  studySiteDir = paste0(dataSaveDir, "mpb_study_sites")
+  statesDir = paste0(dataSaveDir, "tl_2017_us_state")
 }
 # Daymet: Read all the daymet rasters ---------------------------------------------
 
@@ -53,8 +55,6 @@ counter = counter + 1; print(counter) }
 xInterval; rangey; yInterval
 plot(sort(x))
 
-
-
 # Databasin:  Read the lodgepole and ponderosa pine rasters --------------------------- 
 (USTreesPerCellDirs = list.dirs(paste0(DatabasinDataPath, "Western_Conterminous_US_Killed_Trees_Per_Grid_Cell_Mountain_Pine_Beetle"), recursive = F))
 i = 1; (contortaRasterFiles = list.files(USTreesPerCellDirs[i], "w001001.adf", recursive = T, full.names = T))
@@ -70,52 +70,93 @@ for(i in 1:length(contortaRasters)){
   ponderosaRasters[[i]][ponderosaRasters[[i]] == -9999] = 0
 }
 
+save(contortaRasters, file = paste0(dataSaveDir, "contortaRasters.Rd"))
+save(ponderosaRasters, file = paste0(dataSaveDir, "ponderosaRasters.Rd"))
 
+load(file = paste0(dataSaveDir, "contortaRasters.Rd"))
+load(file = paste0(dataSaveDir, "ponderosaRasters.Rd"))
 
 # Databasin: get all raster cells with any tree kill activity duri --------
 load(paste0(dataSaveDir, "daymetList.Rd"))
 cellIDList = vector(mode = "list", length = length(contortaRasters))
-i = 1
 for(i in 1:length(contortaRasters)){
   print(i)
   cellIDList[[i]] =   
-    c(which(ponderosaRasters[[i]][] >= 0), which(contortaRasters[[i]][] >= 0))
+    c(which(ponderosaRasters[[i]][] > 0), which(contortaRasters[[i]][] > 0))
 }
 
 # raster cell IDs corresponding to pixels that had beetle kill in at least one of the study years
 cellIDs = unique(unlist(cellIDList))
 
 # Coordinates of the cells
-cellXY = xyFromCell(ponderosaRasters[[1]], cellIDs)
+cellXY = data.frame(xyFromCell(ponderosaRasters[[1]], cellIDs))
+head(cellXY)
+
+coordinates(cellXY) = ~ x + y
+proj4string(cellXY) = proj4string(ponderosaRasters[[1]])
+
+cellLonLat = spTransform(cellXY, lonLatProj)
 
 treeKillYears = 1997:2010
 MpbSurvivalYears = 1981:2017
-i = 1
-ponderosaRasters[[i]][cellIDs]
 
-# Collect the tree killed data into a data table
-treeKillDT = data.table(cellID = cellIDs, matrix(0, nrow = length(cellIDs), ncol = 2 * length(treeKillYears)))
-for (i in 1:length(ponderosaRasters)){
-  print(i)
-  treeKillDT[, i + 1] = ponderosaRasters[[i]][cellIDs]
-  treeKillDT[, i + 1 + length(treeKillYears)] = contortaRasters[[i]][cellIDs]
-}
+leadingColumnNames = c("cellID", "x", "y", "lon", "lat", "daymetTile")
+
+# Collect the tree killed data into a data frame
+treeKillSPDF = data.frame(cellID = cellIDs,x = cellXY$x, y = cellXY$y, lon = cellLonLat$x, lat = cellLonLat$y, matrix(0, nrow = length(cellIDs), ncol = 1 + 2 * length(treeKillYears)))
+treeKillSPDF = cbind(treeKillSPDF, matrix(0, nrow = length(cellIDs), ncol = length(MpbSurvivalYears)))
+names(treeKillSPDF) = 
+  c(
+    leadingColumnNames, 
+    paste0("Ponderosa_Kill_Observed_", treeKillYears),paste0("Contorta_Kill_Observed_", treeKillYears), 
+    paste0("Mpb_survival_winter_ending_", MpbSurvivalYears))
 
 # Convert it to a spatial points dataframe
-treeKillDT
-coordinates(treeKillDT) = cellXY
-proj4string(treeKillDT) = proj4string(ponderosaRasters[[1]])
+coordinates(treeKillSPDF) = cellXY@coords
+proj4string(treeKillSPDF) = proj4string(ponderosaRasters[[1]])
+summary(treeKillSPDF)
+
+# Add the tree kill values
+for (i in 1:length(ponderosaRasters)){
+  pIndex = i + length(leadingColumnNames)
+  cIndex = pIndex + length(treeKillYears)
+  print(names(treeKillSPDF)[pIndex])
+  names(treeKillSPDF)[cIndex]
+  treeKillSPDF@data[, pIndex] = ponderosaRasters[[i]][cellIDs]
+  treeKillSPDF@data[, cIndex] = contortaRasters[[i]][cellIDs]
+}
+
+treeKillSPDF_orig = treeKillSPDF
+
+# Get the closest points with survival values
+treeKillSPDF = spTransform(treeKillSPDF, proj4string(mpbSurvivalSpatialPoints))
+ddd = knn(coordinates(mpbSurvivalSpatialPoints), coordinates(treeKillSPDF), k = 1)
+treeKillSPDF@data[, survivalIndices] = mpbSurvivalSpatialPoints@data[ddd$nn.idx, ]
+save(treeKillSPDF, file = paste0(dataSaveDir, "treeKillSPDF.Rd"))
 
 
 
-# Combine tree kill and MPB survival data into one object -----------------
-# Add the corresponding survival data
-treeKill_MpbSurvival_US = getSurvival(treeKillDT, daymetList)
-treeKill_MpbSurvival_US = treeKill_MpbSurvival
+plot(treeKillSPDF, pch = 16, cex = 0.1)
+
+plot(subset(treeKillSPDF, is.na(Mpb_survival_winter_ending_1982)), add = T, cex = 0.1, col = 2)
+
+
+
+
+summary(treeKillSPDF)
+treeKillSPDF
+
+load(paste0(dataSaveDir, "treeKillSPDF.Rd"))
+load(paste0(dataSaveDir, "daymetList.Rd"))
+
+save(treeKill_MpbSurvival_US_5, file = paste0(dataSaveDir, "treeKill_MpbSurvival_US_5.Rd"))
+
+
+treeKill_MpbSurvival_US = rbind(treeKill_MpbSurvival_US_1, treeKill_MpbSurvival_US_2, treeKill_MpbSurvival_US_3, treeKill_MpbSurvival_US_4)
 names(treeKill_MpbSurvival_US) = c("CellID",
-              paste0("Ponderosa_Kill_Observed_", treeKillYears),
-              paste0("Contorta_Kill_Observed_", treeKillYears),
-              paste0("Mpb_survival_winter_ending_", MpbSurvivalYears))
+                                   paste0("Ponderosa_Kill_Observed_", treeKillYears),
+                                   paste0("Contorta_Kill_Observed_", treeKillYears),
+                                   paste0("Mpb_survival_winter_ending_", MpbSurvivalYears))
 save(treeKill_MpbSurvival_US, file = paste0(dataSaveDir, "treeKill_MpbSurvival_US.Rd"))
 
 
@@ -156,6 +197,7 @@ save(treeKill_MpbSurvival_StudySites, file = paste0(dataSaveDir, "treeKill_MpbSu
 
 # Setup Study Sites vector data -------------------------------------------------------
 proj = proj4string(treeKill_MpbSurvival_US)
+proj = proj4string(daymetList[[1]]@data)
 studySites = spTransform(readOGR(studySiteDir, "mpb_study_sites"), proj)
 
 StudySiteCode = vector(mode = "numeric", length = nrow(studySites))

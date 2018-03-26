@@ -5,7 +5,7 @@ source("LoadData.R")
 # Plot color-coded study sites --------------------------------------------
 x = factor(studySites$FOREST)
 pdf(file = paste0(figureDir, "study_sites.pdf"))
-plot(studySites, col = match(studySites$FORCODE, colMap$forcodes), border = NA); plot(states, add = T, border = gray(0.5))
+plot(studySites, col = match(studySites$FORCODE, colMap2$forcode), border = NA); plot(states, add = T, border = gray(0.5))
 legend("bottomleft", legend = colMap$fornames, col = colMap$col, pch = 16, bg = "white")
 dev.off()
 

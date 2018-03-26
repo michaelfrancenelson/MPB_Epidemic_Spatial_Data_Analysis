@@ -95,6 +95,10 @@ plotrange = function(dm)
 }
 
 
+
+
+
+
 getSurvival = function(spointsdf, daymetList)
 {
   
@@ -119,3 +123,6 @@ getSurvival = function(spointsdf, daymetList)
   
   return(out)
 }
+
+
+
