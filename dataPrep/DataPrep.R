@@ -100,80 +100,63 @@ cellLonLat = spTransform(cellXY, lonLatProj)
 treeKillYears = 1997:2010
 MpbSurvivalYears = 1981:2017
 
-leadingColumnNames = c("cellID", "x", "y", "lon", "lat", "daymetTile")
-
+leadingColumnNames = c("cellID")
 # Collect the tree killed data into a data frame
-treeKillSPDF = data.frame(cellID = cellIDs,x = cellXY$x, y = cellXY$y, lon = cellLonLat$x, lat = cellLonLat$y, matrix(0, nrow = length(cellIDs), ncol = 1 + 2 * length(treeKillYears)))
-treeKillSPDF = cbind(treeKillSPDF, matrix(0, nrow = length(cellIDs), ncol = length(MpbSurvivalYears)))
-names(treeKillSPDF) = 
+mpbSurvivalTreeKill_WesternUs = data.frame(cellID = cellIDs, matrix(0, nrow = length(cellIDs), ncol = 2 * length(treeKillYears)))
+mpbSurvivalTreeKill_WesternUs = cbind(mpbSurvivalTreeKill_WesternUs, matrix(0, nrow = length(cellIDs), ncol = length(MpbSurvivalYears)))
+names(mpbSurvivalTreeKill_WesternUs) = 
   c(
     leadingColumnNames, 
     paste0("Ponderosa_Kill_Observed_", treeKillYears),paste0("Contorta_Kill_Observed_", treeKillYears), 
     paste0("Mpb_survival_winter_ending_", MpbSurvivalYears))
 
 # Convert it to a spatial points dataframe
-coordinates(treeKillSPDF) = cellXY@coords
-proj4string(treeKillSPDF) = proj4string(ponderosaRasters[[1]])
-summary(treeKillSPDF)
+coordinates(mpbSurvivalTreeKill_WesternUs) = cellXY@coords
+proj4string(mpbSurvivalTreeKill_WesternUs) = proj4string(ponderosaRasters[[1]])
+summary(mpbSurvivalTreeKill_WesternUs)
 
 # Add the tree kill values
 for (i in 1:length(ponderosaRasters)){
   pIndex = i + length(leadingColumnNames)
   cIndex = pIndex + length(treeKillYears)
-  print(names(treeKillSPDF)[pIndex])
-  names(treeKillSPDF)[cIndex]
-  treeKillSPDF@data[, pIndex] = ponderosaRasters[[i]][cellIDs]
-  treeKillSPDF@data[, cIndex] = contortaRasters[[i]][cellIDs]
+  print(names(mpbSurvivalTreeKill_WesternUs)[pIndex])
+  names(mpbSurvivalTreeKill_WesternUs)[cIndex]
+  mpbSurvivalTreeKill_WesternUs@data[, pIndex] = ponderosaRasters[[i]][cellIDs]
+  mpbSurvivalTreeKill_WesternUs@data[, cIndex] = contortaRasters[[i]][cellIDs]
 }
 
-treeKillSPDF_orig = treeKillSPDF
+mpbSurvivalTreeKill_WesternUs_orig = mpbSurvivalTreeKill_WesternUs
 
+
+mpbSurvivalTreeKill_WesternUs
+names(mpbSurvivalTreeKill_WesternUs)
 # Get the closest points with survival values
-treeKillSPDF = spTransform(treeKillSPDF, proj4string(mpbSurvivalSpatialPoints))
-ddd = knn(coordinates(mpbSurvivalSpatialPoints), coordinates(treeKillSPDF), k = 1)
-treeKillSPDF@data[, survivalIndices] = mpbSurvivalSpatialPoints@data[ddd$nn.idx, ]
-save(treeKillSPDF, file = paste0(dataSaveDir, "treeKillSPDF.Rd"))
+survivalIndices = (ncol(mpbSurvivalTreeKill_WesternUs) - (length(MpbSurvivalYears) - 1)):ncol(mpbSurvivalTreeKill_WesternUs)
+names(mpbSurvivalTreeKill_WesternUs)[survivalIndices]
+load(paste0(dataSaveDir, "mpbSurvivalSpatialPoints.Rd"))
+mpbSurvivalTreeKill_WesternUs = spTransform(mpbSurvivalTreeKill_WesternUs, proj4string(mpbSurvivalSpatialPoints))
+ddd = knn(coordinates(mpbSurvivalSpatialPoints), coordinates(mpbSurvivalTreeKill_WesternUs), k = 1)
+mpbSurvivalTreeKill_WesternUs@data[, survivalIndices] = mpbSurvivalSpatialPoints@data[ddd$nn.idx, ]
+save(mpbSurvivalTreeKill_WesternUs, file = paste0(dataSaveDir, "mpbSurvivalTreeKill_WesternUs.Rd"))
 
-
-
-plot(treeKillSPDF, pch = 16, cex = 0.1)
-
-plot(subset(treeKillSPDF, is.na(Mpb_survival_winter_ending_1982)), add = T, cex = 0.1, col = 2)
-
-
-
-
-summary(treeKillSPDF)
-treeKillSPDF
-
-load(paste0(dataSaveDir, "treeKillSPDF.Rd"))
-load(paste0(dataSaveDir, "daymetList.Rd"))
-
-save(treeKill_MpbSurvival_US_5, file = paste0(dataSaveDir, "treeKill_MpbSurvival_US_5.Rd"))
-
-
-treeKill_MpbSurvival_US = rbind(treeKill_MpbSurvival_US_1, treeKill_MpbSurvival_US_2, treeKill_MpbSurvival_US_3, treeKill_MpbSurvival_US_4)
-names(treeKill_MpbSurvival_US) = c("CellID",
-                                   paste0("Ponderosa_Kill_Observed_", treeKillYears),
-                                   paste0("Contorta_Kill_Observed_", treeKillYears),
-                                   paste0("Mpb_survival_winter_ending_", MpbSurvivalYears))
-save(treeKill_MpbSurvival_US, file = paste0(dataSaveDir, "treeKill_MpbSurvival_US.Rd"))
-
-
+plot(mpbSurvivalTreeKill_WesternUs, pch = 16, cex = 0.1)
 
 # Extract data for study sites and set up colors/plotting names --------------------------------------------
 
-proj = proj4string(treeKill_MpbSurvival_US)
+proj = proj4string(mpbSurvivalTreeKill_WesternUs)
 studySites = spTransform(readOGR(studySiteDir, "mpb_study_sites"), proj)
 
-treeKill_MpbSurvival_StudySites = 
-  treeKill_MpbSurvival_US[
-    !is.na(over(treeKill_MpbSurvival_US, as(studySites, "SpatialPolygons"))), ]
-forestIndices = over(treeKill_MpbSurvival_StudySites, as(studySites, "SpatialPolygons"))
-treeKill_MpbSurvival_StudySites = cbind(treeKill_MpbSurvival_StudySites, studySites[forestIndices, 3:4])
+mpbSurvivalTreeKill_StudySites = mpbSurvivalTreeKill_WesternUs[
+    !is.na(over(mpbSurvivalTreeKill_WesternUs, as(studySites, "SpatialPolygons"))), ]
 
-forcodes = levels(treeKill_MpbSurvival_StudySites$FORCODE)
-fornames = treeKill_MpbSurvival_StudySites$FOREST[match(forcodes, treeKill_MpbSurvival_StudySites$FORCODE)]
+summary(mpbSurvivalTreeKill_StudySites)
+plot(mpbSurvivalTreeKill_StudySites)
+names(studySites)
+forestIndices = over(mpbSurvivalTreeKill_StudySites, as(studySites, "SpatialPolygons"))
+mpbSurvivalTreeKill_StudySites = cbind(mpbSurvivalTreeKill_StudySites, studySites[forestIndices, c("FOREST", "FORCODE")])
+
+forcodes = levels(mpbSurvivalTreeKill_StudySites$FORCODE)
+fornames = mpbSurvivalTreeKill_StudySites$FOREST[match(forcodes, mpbSurvivalTreeKill_StudySites$FORCODE)]
 colMap = data.frame(forcode = forcodes, col = 1:6, forname = fornames)
 
 # Combine araphao, white river, and medicine bow into the same study site:
@@ -182,22 +165,23 @@ newNames = as.character(c("Black Hills", "Colorado", "Colville", "Beaverhead"))
 newCodes = 1:4
 colMap2 = data.frame(forcode = newCodes, forname = newNames, col = 1:4)
 
-StudySiteCode = vector(mode = "numeric", length = nrow(treeKill_MpbSurvival_StudySites))
+StudySiteCode = vector(mode = "numeric", length = nrow(mpbSurvivalTreeKill_StudySites))
 StudySiteNames = vector(mode = "character", length = length(StudySiteCode))
 
 for(i in 1:4){
-  StudySiteCode[treeKill_MpbSurvival_StudySites$FORCODE %in% oldCodes[[i]] ] = colMap2$forcode[i]
+  StudySiteCode[mpbSurvivalTreeKill_StudySites$FORCODE %in% oldCodes[[i]] ] = colMap2$forcode[i]
   StudySiteNames[StudySiteCode == colMap2$forcode[i]] = as.character(colMap2$forname[i])}
 StudySiteNames[match(colMap2$forcode, StudySiteCode)]
-treeKill_MpbSurvival_StudySites@data = data.frame(treeKill_MpbSurvival_StudySites, StudySiteCode = StudySiteCode, StudySiteName = StudySiteNames)
+mpbSurvivalTreeKill_StudySites@data = data.frame(mpbSurvivalTreeKill_StudySites@data, StudySiteCode = StudySiteCode, StudySiteName = StudySiteNames)
+
+head(mpbSurvivalTreeKill_StudySites@data)
 
 save(colMap, colMap2, file = paste0(dataSaveDir, "colMaps.Rd"))
-save(treeKill_MpbSurvival_StudySites, file = paste0(dataSaveDir, "treeKill_MpbSurvival_StudySites.Rd"))
+save(mpbSurvivalTreeKill_StudySites, file = paste0(dataSaveDir, "mpbSurvivalTreeKill_StudySites.Rd"))
 
 
 # Setup Study Sites vector data -------------------------------------------------------
-proj = proj4string(treeKill_MpbSurvival_US)
-proj = proj4string(daymetList[[1]]@data)
+proj = proj4string(mpbSurvivalTreeKill_WesternUs)
 studySites = spTransform(readOGR(studySiteDir, "mpb_study_sites"), proj)
 
 StudySiteCode = vector(mode = "numeric", length = nrow(studySites))
@@ -217,4 +201,3 @@ states = spTransform(readOGR(statesDir, "tl_2017_us_state"), proj)
 head(states@data)
 states@data = states@data[, c("STUSPS", 'NAME')]
 save(states, file = paste0(dataSaveDir, "States.Rd"))
-
