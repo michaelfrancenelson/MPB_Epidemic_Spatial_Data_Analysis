@@ -213,12 +213,19 @@ save(states, file = paste0(dataSaveDir, "States.Rd"))
 # Bounding boxes for study sites ------------------------------------------
 locator(2)
 plot(studySites, col = colMap$col[match(studySites$studySiteName, colMap$studySiteName)], border = NA)
-extentColville = extent(x = c(-1371116, -1146951), y = c(683243, 868466)); plot(extentColville, add = T)
-extentColorado = extent(x = c(-748860, -325889), y = c(-392153, 83343)); plot(extentColorado, add = T)
-extentBlackHills = extent(x = c(-406060, -195957), y = c(72286, 287917)); plot(extentBlackHills, add = T)
-extentBeaverhead = extent(x = c(-1064015, -820737), y = c(235392, 539489)); plot(extentBeaverhead, add = T)
-save(extentColorado, extentColville, extentBlackHills, extentBeaverhead, file = paste0(dataSaveDir, "studySiteExtents.Rd"))
 
+extentSites = list(
+  Beaverhead = extent(x = c(-1064015, -820737), y = c(235392, 539489)),
+  BlackHills = extent(x = c(-406060, -195957), y = c(72286, 287917)),
+  Colorado = extent(x = c(-748860, -325889), y = c(-392153, 83343)),
+  Colville = extent(x = c(-1371116, -1146951), y = c(683243, 868466)),
+  WesternUS = extent(x = c(-2001120, -200000), y = c(-6e5, 951135)))
+
+shapeSites = lapply(extentSites, function(x) crop(studySites, x))
+names(shapeSites) = names(extentSites)
+shapeSites$WesternUS = crop(states, extentSites$WesternUS)
+save(extentSites, file = paste0(dataSaveDir, "extentSites.Rd"))
+save(shapeSites, file = paste0(dataSaveDir, "shapeSites.Rd"))
 
 # Raster stacks of survival for the study sites ---------------------------
 lengthXY = function(ext, unit = 1000){
@@ -250,10 +257,65 @@ getStackFromExt = function(ext, spdf){
   names(st) = names(spd)
   return(st)
 }
-MpbSurvivalStackColville = getStackFromExt(extentColville, mpbSurvivalSpatialPoints)
-MpbSurvivalStackColorado = getStackFromExt(extentColorado, mpbSurvivalSpatialPoints)
-MpbSurvivalStackBeaverhead = getStackFromExt(extentBeaverhead, mpbSurvivalSpatialPoints)
-MpbSurvivalStackBlackHills = getStackFromExt(extentBlackHills, mpbSurvivalSpatialPoints)
 
-save(MpbSurvivalStackBeaverhead, MpbSurvivalStackColorado, MpbSurvivalStackColville, MpbSurvivalStackBlackHills, file = paste0(dataSaveDir, "MpbSurvivalRasterStacis.Rd"))
+mpbSurvivalStacks = lapply(extentSites, function(x) getStackFromExt(x, mpbSurvivalSpatialPoints))
+names(mpbSurvivalStacks) = names(extentSites)
+save(mpbSurvivalStacks, file = paste0(dataSaveDir, "mpbSurvivalStacks.Rd"))
 
+
+
+
+
+# RasterStacks for ponderosa and contorta ---------------------------------
+
+ponderosaRasters[[1]]
+ls()
+
+shapeSitesAlbers = lapply(shapeSites, function(s) spTransform(s, proj4string(ponderosaRasters[[1]])))
+extentSitesAlbers = lapply(extentSites, function(s) spTransform(as(s, "SpatialPolygons"), proj4string(ponderosaRasters[[1]])))
+
+reprojectAndCropToStack = function(rasterList, ext, proj4ext, layerNames = NA){
+  
+  bPolygon = as(ext, 'SpatialPolygons');
+  proj4string(bPolygon) = proj4ext
+  bPolygon1 = spTransform(bPolygon, proj4string(rasterList[[1]]))
+  
+  print(1)
+  rr1 = crop(rasterList[[10]], extent(bPolygon1))
+  rr = crop(projectRaster(rr1, crs = crs(bPolygon)), ext)
+  st = stack(rr)
+  
+  i = 2
+  for(r in rasterList[-1]){
+    print(i); i = i + 1
+    rr1 = crop(r, extent(bPolygon1))
+    
+    rr = crop(projectRaster(rr1, crs = crs(bPolygon)), ext)
+    st = addLayer(st, rr)
+  }
+  
+  if(!is.na(layerNames))
+    names(st) = layerNames
+  return(st)
+}
+
+
+layerNames = paste0("tree_kill_", 1997:2010)
+proj4ext = proj4string(shapeSites$WesternUS)
+
+stacksSites$BlackHills = reprojectAndCropToStack( ponderosaRasters, extentSites$BlackHills, proj4ext = proj4ext, layerNames = layerNames)
+
+stackSitesPonderosa = lapply(extentSites, function(ext) reprojectAndCropToStack(ponderosaRasters, ext, proj4ext, layerNames))
+stackSitesContorta = lapply(extentSites, function(ext) reprojectAndCropToStack(contortaRasters, ext, proj4ext, layerNames))
+names(stackSitesPonderosa) = names(stackSitesContorta) = names(shapeSites)
+
+stackSitesPonderosaMasked = stackSitesContortaMasked = vector(mode = "list", length = length(stackSitesContorta))
+names(stackSitesPonderosaMasked) = names(stackSitesContortaMasked) = names(stackSitesContorta)
+
+for(i in 1:length(stackSitesPonderosa)){
+  print(i)
+  stackSitesPonderosaMasked[[i]] = mask(stackSitesPonderosa[[i]], shapeSites[[i]])  
+  stackSitesContortaMasked[[i]] = mask(stackSitesContorta[[i]], shapeSites[[i]])  
+}
+
+save(stackSitesPonderosa, stackSitesContorta, stackSitesPonderosaMasked, stackSitesContortaMasked, file = paste0(dataSaveDir, "stackSites.Rd"))
