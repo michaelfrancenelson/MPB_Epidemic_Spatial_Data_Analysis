@@ -1,20 +1,9 @@
 source("LoadData.R")
 source("PlottingFunctions.R")
 
-ls()
-
-
-
-
-plot(subset(MpbSurvivalStackBeaverhead, 1))
-plot(subset(studySites, studySiteName == "Beaverhead"), add = T, lwd = 0.4)
-
-
-
 # Single year winter survival plots for each study site -------------------
 plot(extentSites$Colorado, axes = F, ann = F); 
 plot(mpbSurvivalStacks$Colorado[[1]], axes = F, box = F); plot(shapeSites$Colorado, lwd = 0.4, add = T)
-
 
 survivalYears = 1981:2017
 
@@ -33,8 +22,6 @@ for(i in 1:4){
   }
   dev.off()
 }
-
-
 
 
 # Multi-year average survival for study sites -----------------------------
@@ -60,4 +47,9 @@ for(nYears in c(5, 8, 12)){
       mtext(mainTitle, side = 3)
     }
     dev.off()
-  }}
+  }
+}
+
+
+
+ 

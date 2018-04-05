@@ -73,6 +73,10 @@ for(i in 1:length(contortaRasters)){
 save(contortaRasters, file = paste0(dataSaveDir, "contortaRasters.Rd"))
 save(ponderosaRasters, file = paste0(dataSaveDir, "ponderosaRasters.Rd"))
 
+
+plot(contortaRasters[[1]])
+plot(stackSitesContorta$WesternUS$tree_kill_1997)
+ls()
 load(file = paste0(dataSaveDir, "contortaRasters.Rd"))
 load(file = paste0(dataSaveDir, "ponderosaRasters.Rd"))
 
@@ -262,26 +266,14 @@ mpbSurvivalStacks = lapply(extentSites, function(x) getStackFromExt(x, mpbSurviv
 names(mpbSurvivalStacks) = names(extentSites)
 save(mpbSurvivalStacks, file = paste0(dataSaveDir, "mpbSurvivalStacks.Rd"))
 
-
-
-
-
 # RasterStacks for ponderosa and contorta ---------------------------------
-
-ponderosaRasters[[1]]
-ls()
-
-shapeSitesAlbers = lapply(shapeSites, function(s) spTransform(s, proj4string(ponderosaRasters[[1]])))
-extentSitesAlbers = lapply(extentSites, function(s) spTransform(as(s, "SpatialPolygons"), proj4string(ponderosaRasters[[1]])))
-
 reprojectAndCropToStack = function(rasterList, ext, proj4ext, layerNames = NA){
   
   bPolygon = as(ext, 'SpatialPolygons');
   proj4string(bPolygon) = proj4ext
   bPolygon1 = spTransform(bPolygon, proj4string(rasterList[[1]]))
   
-  print(1)
-  rr1 = crop(rasterList[[10]], extent(bPolygon1))
+  rr1 = crop(rasterList[[1]], extent(bPolygon1))
   rr = crop(projectRaster(rr1, crs = crs(bPolygon)), ext)
   st = stack(rr)
   
@@ -299,18 +291,12 @@ reprojectAndCropToStack = function(rasterList, ext, proj4ext, layerNames = NA){
   return(st)
 }
 
-
 layerNames = paste0("tree_kill_", 1997:2010)
 proj4ext = proj4string(shapeSites$WesternUS)
 
-stacksSites$BlackHills = reprojectAndCropToStack( ponderosaRasters, extentSites$BlackHills, proj4ext = proj4ext, layerNames = layerNames)
-
 stackSitesPonderosa = lapply(extentSites, function(ext) reprojectAndCropToStack(ponderosaRasters, ext, proj4ext, layerNames))
 stackSitesContorta = lapply(extentSites, function(ext) reprojectAndCropToStack(contortaRasters, ext, proj4ext, layerNames))
-names(stackSitesPonderosa) = names(stackSitesContorta) = names(shapeSites)
-
 stackSitesPonderosaMasked = stackSitesContortaMasked = vector(mode = "list", length = length(stackSitesContorta))
-names(stackSitesPonderosaMasked) = names(stackSitesContortaMasked) = names(stackSitesContorta)
 
 for(i in 1:length(stackSitesPonderosa)){
   print(i)
@@ -318,4 +304,90 @@ for(i in 1:length(stackSitesPonderosa)){
   stackSitesContortaMasked[[i]] = mask(stackSitesContorta[[i]], shapeSites[[i]])  
 }
 
+names(stackSitesPonderosaMasked) = names(stackSitesContortaMasked) = names(stackSitesPonderosa) = names(stackSitesContorta) = names(shapeSites)
 save(stackSitesPonderosa, stackSitesContorta, stackSitesPonderosaMasked, stackSitesContortaMasked, file = paste0(dataSaveDir, "stackSites.Rd"))
+
+
+
+# Mean trees killed per cell in study sites -------------------------------
+nnn = c("site",  "year",  "meanPon",  "meanCon",  "meanPonNonzero",  "meanConNonzero",  "meanSum",  "meanSumNonzero")
+killYears = 1997:2010
+
+siteMeanKills = data.frame(matrix(0, nrow = length(killYears) * length(stackSitesContorta),  ncol = length(nnn)))
+names(siteMeanKills) = nnn
+head(siteMeanKills)
+
+index = 1
+for(i in 1:length(stackSitesContorta)){
+  print(i)
+  for(j in 1:  nlayers(stackSitesContorta[[i]])){
+    con = subset(stackSitesContorta[[i]], j)[]
+    pon = subset(stackSitesPonderosa[[i]], j)[]
+    sum1 = con + pon
+    siteMeanKills[index, 1] = names(stackSitesContorta)[i]
+    siteMeanKills[index, -1] =
+      c(
+        killYears[j],
+        mean(pon, na.rm = T),
+        mean(con, na.rm = T),
+        mean(pon[pon > 0], na.rm = T),
+        mean(con[con > 0], na.rm = T),
+        mean(sum1, na.rm = T),
+        mean(sum1[sum1 > 0], na.rm = T))
+    index = index + 1
+  }
+}
+
+# Set any of the NaN values to 0
+apply(siteMeanKills[, -1], 2, function(x) x[is.nan(x)] = 0)
+is.nan(siteMeanKills[, 5])
+
+for(i in 2:ncol(siteMeanKills))
+{
+  ss = siteMeanKills[, i]
+  siteMeanKills[, i][is.nan(ss)] = 0
+}
+
+save(siteMeanKills, file = paste0(dataSaveDir, "siteMeanKills.Rd"))
+
+
+# Mean survival each year in study sites ----------------------------------
+
+survivalYears = 1981:2017
+nnn = c("year", names(mpbSurvivalStacks))
+siteMeanMpbSurvival = data.frame(matrix(0, ncol = length(nnn), nrow = length(survivalYears)))
+names(siteMeanMpbSurvival) = nnn
+siteMeanMpbSurvival$year = survivalYears
+i = 1
+for(i in 1:length(stackSitesContorta)){
+  print(i)
+  colIndex = which(names(siteMeanMpbSurvival) == names(stackSitesContorta)[i])
+  means = c()
+  for(j in 1:length(survivalYears)){
+    dat = subset(mpbSurvivalStacks[[i]], j)[]
+    means = c(means, mean(dat, na.rm = T)  )
+  }
+  siteMeanMpbSurvival[, colIndex] = means
+}
+save(siteMeanMpbSurvival, file = paste0(dataSaveDir, "siteMeanMpbSurvival.Rd"))
+
+
+
+
+
+# multi-year average survival in study sites ------------------------------
+timeLagMeanSurvivals = function(df,  nYears){
+  dfOut = df[0, ]
+  rowIndex = 1
+  for(endYear in (df$year[1] + nYears):tail(df$year, 1)){
+    startYear = endYear - nYears + 1
+    startIndex = which(grepl(startYear, df$year))
+    dfOut[rowIndex, -1] = apply(df[startIndex:(startIndex + nYears), ], 2, mean)[-1]
+    dfOut[rowIndex, ]$year = endYear
+    rowIndex = rowIndex + 1
+  }
+  return(dfOut)
+}
+
+mpbSurvivalSitesMultiYearAvgAggregate = lapply(1:12, function(x) timeLagMeanSurvivals(siteMeanMpbSurvival, x))
+save(mpbSurvivalSitesMultiYearAvgAggregate, file = paste0(dataSaveDir, "mpbSurvivalSitesMultiYearAvgAggregate.Rd"))
