@@ -215,7 +215,6 @@ save(states, file = paste0(dataSaveDir, "States.Rd"))
 
 
 # Bounding boxes for study sites ------------------------------------------
-locator(2)
 plot(studySites, col = colMap$col[match(studySites$studySiteName, colMap$studySiteName)], border = NA)
 
 extentSites = list(

@@ -4,4 +4,7 @@
 .Ruserdata
 .Rd
 .pdf
+.mp4
 figures/
+packrat/lib*/
+animation.mp4
