@@ -1,4 +1,6 @@
 plotSeriesName = "MPB_survival_tree_kill_scatterplots"
+
+
 if(!dir.exists(paste0(figureDir, plotSeriesName))) dir.create(paste0(figureDir, plotSeriesName))
 plotSeriesDescription = "
 # Scatterplots of number of red stage trees vs. modeled MPB survival for one winter (not a multi-year average).

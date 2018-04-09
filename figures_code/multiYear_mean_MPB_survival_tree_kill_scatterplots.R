@@ -14,10 +14,6 @@ plotSeriesDescription = "
 "
 writeLines(plotSeriesDescription, paste0(plotSeriesDir, "/00_plot_descriptions.txt"))
 
-
-
-
-
 str(mpbSurvivalSitesMultiYearAvgAggregate[[1]], 1)
 siteMeanKills
 
@@ -28,8 +24,6 @@ sapply(2:8, function(i) {
   ss = mpbSurvivalSitesMultiYearAvgAggregate[[i]]
   points(ss$year, ss$WesternUS, type = "l", col = i)  
 })
-
-
 
 str(siteMeanKills, 0)
 
@@ -46,10 +40,7 @@ getMultiYearMeanSurvivalKill = function(killDF, survivalDFList, nYears, siteName
   dfOut = merge(ssK, ssS)
   names(dfOut)[2:3] = c("meanKill_nonzeroCells", "meanKill_allCells")
   return(dfOut)
-  
 }
-
-
 
 nYears = 2
 site = 1
