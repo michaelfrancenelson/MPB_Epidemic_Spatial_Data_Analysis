@@ -79,6 +79,18 @@ inDaymet = function(lat, lon, dm)
   return (inLat && inLon)
 }
 
+inInterval = function(x, interval)
+{
+  stopifnot(length(interval) == 2L)
+  return((interval[1] <= x) & (x <= interval[2]))
+}
+
+daymetIn = function(spPoly, dm){
+  inLon = inInterval(dm@lonRange[1], spPoly@bbox[1, ]) | inInterval(dm@lonRange[2], spPoly@bbox[1, ])
+  inLat = inInterval(dm@latRange[1], spPoly@bbox[2, ]) | inInterval(dm@latRange[2], spPoly@bbox[2, ])
+  return((inLon & inLat))
+}
+
 findDaymet = function(lat, lon, dmList)
 {
   for (dm in dmList)

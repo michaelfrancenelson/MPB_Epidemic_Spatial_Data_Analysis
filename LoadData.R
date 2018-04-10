@@ -44,6 +44,7 @@ figureDir = "./figures/"}
   load("extentSites.Rd")
   load("mpbSurvivalSitesMultiYearAvgAggregate.Rd")
   load("mpbSurvivalSpatialPoints.Rd")
+  load("mpbSurvivalSpatialPointsMasked.Rd")
   load("mpbSurvivalStacks.Rd")
   load("mpbSurvivalTreeKill_WesternUS.Rd")
   load("mpbSurvivalTreeKill_StudySites.Rd")

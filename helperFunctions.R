@@ -58,33 +58,47 @@ timeLagMeanSurvivals = function(df,  nYears){
   for(endYear in (df$year[1] + nYears):tail(df$year, 1)){
     startYear = endYear - nYears + 1
     startIndex = which(grepl(startYear, df$year))
-    dfOut[rowIndex, -1] = apply(df[startIndex:(startIndex + nYears), ], 2, mean)[-1]
+    endIndex = startIndex + nYears - 1
+    dfOut[rowIndex, -1] = apply(df[startIndex:endIndex, ], 2, mean)[-1]
     dfOut[rowIndex, ]$year = endYear
     rowIndex = rowIndex + 1
   }
   return(dfOut)
 }
 
+
+
+# rasterList = ponderosaRasters
+# ext = extentSites$Beaverhead
+# proj4ext = proj4stringMaster
+# layerNames
+
 reprojectAndCropToStack = function(rasterList, ext, proj4ext, layerNames = NA){
   
+  # create a bounding polygon for the exteeeeetent of the 
   bPolygon = as(ext, 'SpatialPolygons');
   proj4string(bPolygon) = proj4ext
+  
+  # The bounding polygon reprojected to match the rasters:
   bPolygon1 = spTransform(bPolygon, proj4string(rasterList[[1]]))
   
-  rr1 = crop(rasterList[[1]], extent(bPolygon1))
-  rr = crop(projectRaster(rr1, crs = crs(bPolygon)), ext)
-  st = stack(rr)
+  # Create an empty stack to be populated in the loop.  
+  st = raster::stack()
   
-  i = 2
-  for(r in rasterList[-1]){
-    print(i); i = i + 1
-    rr1 = crop(r, extent(bPolygon1))
-    
-    rr = crop(projectRaster(rr1, crs = crs(bPolygon)), ext)
+  # for(r in rasterList[-1]){
+  for(i in 1:length(rasterList)){
+    print(i);
+    # Crop the rasters to the extent of the polygon
+    rr1 = crop(rasterList[[i]], extent(bPolygon1))
+    # Reproject the raster to match the master projection:
+    rr = projectRaster(rr1, crs = proj4ext)
+    # Add the layer to the stack:
     st = addLayer(st, rr)
   }
   
-  if(!is.na(layerNames))
+  if(!is.na(layerNames[1]))
     names(st) = layerNames
+  
+  rm(rr, rr1, i, bPolygon, bPolygon1)  
   return(st)
 }

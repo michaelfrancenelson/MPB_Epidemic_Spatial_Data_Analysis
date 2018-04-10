@@ -1,4 +1,6 @@
 source("LoadData.R")
+source("globals.R")
+source("helperFunctions.R")
 source("PlottingFunctions.R")
 plotSeriesName = "MPB_survival_spatial_multi_year_average"
 plotSeriesDir = paste0(figureDir, plotSeriesName)
@@ -11,12 +13,11 @@ writeLines(plotSeriesDescription, paste0(plotSeriesDir, "/00_plot_descriptions.t
 plot(extentSites$Colorado, axes = F, ann = F); 
 plot(mpbSurvivalStacks$Colorado[[1]], axes = F, box = F); plot(shapeSites$Colorado, lwd = 0.4, add = T)
 
-survivalYears = 1981:2017
-
-i = 5
+i = 5; layer = 2
+names(mpbSurvivalStacks)
 names(shapeSites)
-for(i in 1:4){
-  siteName = names(extentSites)[i]
+for(i in 1:length(mpbSurvivalStacks)){
+  siteName = names(mpbSurvivalStacks)f[i]
   filename = paste0("Survival_SingleYear_", siteName, ".pdf")
   
   pdf(file = paste0(plotSeriesDir, "/", filename))
@@ -32,7 +33,6 @@ for(i in 1:4){
 
 # Multi-year average survival for study sites -----------------------------
 
-survivalYears = 1981:2017
 nYears = 5
 i = 2
 layer = nYears
@@ -40,9 +40,8 @@ layer = nYears
 for(nYears in c(5, 8, 12)){
   for(i in 1:5){
     
-    siteName = names(extentSites)[i]
+    siteName = names(mpbSurvivalStacks)[i]
     filename = paste0("Survival_Average_", nYears, "_years_", siteName, ".pdf")
-    
     
     pdf(file = paste0(plotSeriesDir, "/", filename))
     for(layer in (nYears + 1):length(survivalYears)){ 
@@ -54,7 +53,3 @@ for(nYears in c(5, 8, 12)){
     dev.off()
   }
 }
-
-
-
- 
