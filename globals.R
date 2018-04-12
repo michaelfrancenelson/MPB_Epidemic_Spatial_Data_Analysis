@@ -15,3 +15,4 @@ proj4stringDatabasin = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +
 proj4stringLonLat = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 proj4stringMaster = proj4stringDaymet
 rangeBufferWidth = 10 * 1000
+figureDir = "figures/"

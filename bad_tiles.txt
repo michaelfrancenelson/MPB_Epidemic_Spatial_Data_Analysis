@@ -1,0 +1,8 @@
+Problem tiles:
+
+11915: winter ending 1992
+12090: winter ending 2001, 2002
+12091: winter ending 2002
+12269: winter ending 2009
+12452: winter ending 1987
+12453: winter ending 1988

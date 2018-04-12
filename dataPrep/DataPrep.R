@@ -109,7 +109,7 @@
   lapply(pineRanges, function(x) proj4string(x) == proj4stringMaster)
   lapply(studySitePolygons, function(x) proj4string(x) == proj4stringMaster)
   
-  save(pineRanges, studySitePolygons, file = paste0(dataSaveDir, "studySitesSpatial.Rd"))
+  save(pineRanges, studySitePolygons, usStates, canada, file = paste0(dataSaveDir, "studySitesSpatial.Rd"))
   
   # Environment cleanup:
   rm(nationalForestsSPDF, studyForestsSPDF, forestNames)
