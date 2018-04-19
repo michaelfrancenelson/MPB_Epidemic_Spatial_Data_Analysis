@@ -2,6 +2,10 @@ require(spgwr)
 require(maptools)
 require(ggplot2)
 
+devtools::install_github("tidyverse/ggplot2")
+
+
+
 # tree kill and single year survival --------------------------------------
 
 # predictor: mpb modeled survival in winter preceding the tree kill 

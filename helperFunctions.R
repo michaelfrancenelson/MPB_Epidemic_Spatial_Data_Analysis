@@ -1,3 +1,24 @@
+
+
+
+
+makeFortified = function(shape){
+  # make a defensive copy:
+  shape1 = shape
+  if(is(shape1, "DataFrame")){
+    
+  }
+  data.frame(shape1)
+  slot(shape1, "data")
+  is.data.frame(shape1)
+  
+  # create an id column for the separate polygons
+  shape1@data$id = rownames(shape1@data)
+  # melt the data
+  s1 = fortify(shape1, region = "id")
+  return(join(s1, shape1@data, by = "id"))
+}
+
 sourceSection = function(filename, sectionNames)
 {
   lines1 = readLines(filename)
@@ -66,6 +87,14 @@ timeLagMeanSurvivals = function(df,  nYears){
   return(dfOut)
 }
 
+
+
+
+buildGrid = function(spdf,  nCols, nRows){
+  bb = bbox(spdf)
+  cellSize = (bb[, 2] - bb[, 1]) / c(nCols - 1, nRows - 1)
+  return(SpatialGrid(GridTopology(c(bb[, 1]), cellSize, c(nCols, nRows))))
+}
 
 
 # rasterList = ponderosaRasters
